@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+*.egg
+
+# Node / CDK
+node_modules/
+cdk.out/
+infra/dist/
+dashboard/build/
+dashboard/node_modules/
+*.js.map
+
+# AWS
+.aws-sam/
+samconfig.toml
+
+# Test outputs
+test-results/
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files (never commit secrets)
+.env
+.env.*
+!.env.example

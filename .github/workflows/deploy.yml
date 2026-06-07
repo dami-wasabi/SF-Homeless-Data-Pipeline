@@ -1,0 +1,187 @@
+# .github/workflows/deploy.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# CI/CD pipeline for the E84 SF Homeless Pilot.
+#
+# Jobs
+# ────
+#  lint-and-test   – Python (pytest) + TypeScript (tsc) on every push/PR
+#  deploy-infra    – CDK deploy on pushes to main (after tests pass)
+#  deploy-frontend – Build React app, sync to S3, invalidate CloudFront
+#
+# Required GitHub Secrets (set in repo Settings → Secrets → Actions)
+# ──────────────────────────────────────────────────────────────────
+#  AWS_ROLE_ARN          IAM role ARN for OIDC auth (preferred over keys)
+#  AWS_REGION            e.g. us-east-1
+#  ALERT_EMAIL           Email address for CloudWatch alarm SNS topic
+#  PARTNER_BUCKET        Partner public S3 bucket name
+#  PARTNER_KEY           Partner CSV S3 key
+#  REACT_APP_API_URL     Set after first CDK deploy (API Gateway endpoint)
+#  CLOUDFRONT_DIST_ID    Set after first CDK deploy (for cache invalidation)
+#  FRONTEND_BUCKET       Set after first CDK deploy (S3 bucket for React build)
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: CI / CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write     # required for AWS OIDC auth
+  contents: read
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION:   "20"
+
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── Job 1: Lint & Test ─────────────────────────────────────────────────────
+  lint-and-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Python setup ───────────────────────────────────────────────────────
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Python linter (ruff)
+        run: ruff check etl/ lambda/ tests/
+
+      - name: Run Python type checker (mypy)
+        run: mypy etl/ lambda/ --ignore-missing-imports
+
+      - name: Run unit + integration tests
+        run: |
+          python -m pytest tests/ -v \
+            --tb=short \
+            --junitxml=test-results/pytest.xml
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pytest-results
+          path: test-results/
+
+      # ── TypeScript / CDK setup ─────────────────────────────────────────────
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install CDK dependencies
+        run: cd infra && npm ci
+
+      - name: TypeScript type check
+        run: cd infra && npx tsc --noEmit
+
+      # ── Frontend lint ──────────────────────────────────────────────────────
+      - name: Install frontend dependencies
+        run: cd dashboard && npm ci
+
+      - name: Lint frontend (ESLint)
+        run: cd dashboard && npm run lint
+
+  # ── Job 2: Deploy Infrastructure ───────────────────────────────────────────
+  deploy-infra:
+    name: Deploy Infrastructure (CDK)
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Install CDK dependencies
+        run: cd infra && npm ci
+
+      - name: CDK diff (preview changes)
+        run: cd infra && npx cdk diff
+        env:
+          ALERT_EMAIL:    ${{ secrets.ALERT_EMAIL }}
+          PARTNER_BUCKET: ${{ secrets.PARTNER_BUCKET }}
+          PARTNER_KEY:    ${{ secrets.PARTNER_KEY }}
+
+      - name: CDK deploy
+        run: cd infra && npx cdk deploy --require-approval never
+        env:
+          ALERT_EMAIL:    ${{ secrets.ALERT_EMAIL }}
+          PARTNER_BUCKET: ${{ secrets.PARTNER_BUCKET }}
+          PARTNER_KEY:    ${{ secrets.PARTNER_KEY }}
+
+  # ── Job 3: Deploy Frontend ─────────────────────────────────────────────────
+  deploy-frontend:
+    name: Deploy Frontend (React → S3 → CloudFront)
+    runs-on: ubuntu-latest
+    needs: deploy-infra
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region:     ${{ env.AWS_REGION }}
+
+      - name: Install frontend dependencies
+        run: cd dashboard && npm ci
+
+      - name: Build React app
+        run: cd dashboard && npm run build
+        env:
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL }}
+
+      - name: Sync build to S3
+        run: |
+          aws s3 sync dashboard/build/ s3://${{ secrets.FRONTEND_BUCKET }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html"
+          # index.html must not be cached long – React updates need to reach users
+          aws s3 cp dashboard/build/index.html \
+            s3://${{ secrets.FRONTEND_BUCKET }}/index.html \
+            --cache-control "no-cache, no-store, must-revalidate"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DIST_ID }} \
+            --paths "/*"
