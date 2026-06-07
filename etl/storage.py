@@ -32,7 +32,7 @@ import os
 from typing import Optional
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Key, ConditionBase
 
 
 logger = logging.getLogger(__name__)
@@ -94,7 +94,8 @@ def get_encounters_for_shelter(
     Uses the shelter-date-index GSI.
     """
     table = _table()
-    key_expr = Key("shelter").eq(shelter)
+    from boto3.dynamodb.conditions import ConditionBase
+    key_expr: ConditionBase = Key("shelter").eq(shelter)
     if from_date and to_date:
         key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
     elif from_date:
