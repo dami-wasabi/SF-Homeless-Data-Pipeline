@@ -14,7 +14,7 @@ import sys
 import os
 import unittest
 from datetime import date
-from unittest.mock import MagicMock, patch
+
 
 # Make the project root importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
