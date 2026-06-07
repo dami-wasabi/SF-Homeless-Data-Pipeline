@@ -93,6 +93,57 @@ def get_encounters_for_shelter(
     All encounters at a shelter, optionally bounded by ISO date strings.
     Uses the shelter-date-index GSI.
     """
+    from boto3.dynamodb.conditions import ConditionBase
+    table = _table()
+    key_expr: ConditionBase = Key("shelter").eq(shelter)
+    if from_date and to_date:
+        key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
+    elif from_date:
+        key_expr = key_expr & Key("encounter_date").gte(from_date)
+
+    response = table.query(
+        IndexName="shelter-date-index",
+        KeyConditionExpression=key_expr,
+    )
+    return response.get("Items", [])
+    """
+    All encounters at a shelter, optionally bounded by ISO date strings.
+    Uses the shelter-date-index GSI.
+    """
+    from boto3.dynamodb.conditions import ConditionBase
+    table = _table()
+    key_expr: ConditionBase = Key("shelter").eq(shelter)
+    if from_date and to_date:
+        key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
+    elif from_date:
+        key_expr = key_expr & Key("encounter_date").gte(from_date)
+
+    response = table.query(
+        IndexName="shelter-date-index",
+        KeyConditionExpression=key_expr,
+    )
+    return response.get("Items", [])
+    """
+    All encounters at a shelter, optionally bounded by ISO date strings.
+    Uses the shelter-date-index GSI.
+    """
+    from boto3.dynamodb.conditions import ConditionBase
+    table = _table()
+    key_expr: ConditionBase = Key("shelter").eq(shelter)
+    if from_date and to_date:
+        key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
+    elif from_date:
+        key_expr = key_expr & Key("encounter_date").gte(from_date)
+
+    response = table.query(
+        IndexName="shelter-date-index",
+        KeyConditionExpression=key_expr,
+    )
+    return response.get("Items", [])
+    """
+    All encounters at a shelter, optionally bounded by ISO date strings.
+    Uses the shelter-date-index GSI.
+    """
     table = _table()
     from boto3.dynamodb.conditions import ConditionBase
     key_expr: ConditionBase = Key("shelter").eq(shelter)
