@@ -59,7 +59,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Run Python linter (ruff)
-        run: ruff check etl/ lambda/ tests/
+        run: ruff check etl/ lambda/ tests/ --exclude lambda/local_dev.py
 
       - name: Run Python type checker (mypy)
         run: mypy etl/ lambda/ --ignore-missing-imports

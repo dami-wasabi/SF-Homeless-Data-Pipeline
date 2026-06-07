@@ -33,7 +33,7 @@ from typing import Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
-from botocore.exceptions import ClientError
+
 
 logger = logging.getLogger(__name__)
 

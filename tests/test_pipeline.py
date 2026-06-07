@@ -10,7 +10,6 @@ No AWS credentials needed – all AWS calls are mocked with unittest.mock.
 """
 
 import io
-import json
 import sys
 import os
 import unittest

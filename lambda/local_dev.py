@@ -79,7 +79,9 @@ storage_module.get_encounters_for_hid     = _local_get_hid
 storage_module.get_encounters_for_shelter = _local_get_shelter
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
-from lambda.api_handler import handler as api_handler   # noqa: E402  (after monkey-patch)
+import importlib
+_api_mod = importlib.import_module("lambda.api_handler")
+api_handler = _api_mod.handler   # noqa: E402  (after monkey-patch)
 
 app = FastAPI(title="E84 Pilot – Local Dev API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])

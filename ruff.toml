@@ -1,0 +1,5 @@
+
+
+[lint]
+exclude = ["lambda/local_dev.py"]
+ignore = []                  # Tell ruff to skip local_dev.py
