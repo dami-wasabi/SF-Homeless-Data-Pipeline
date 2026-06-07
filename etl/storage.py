@@ -32,7 +32,7 @@ import os
 from typing import Optional
 
 import boto3
-from boto3.dynamodb.conditions import Key, ConditionBase  # noqa: F401
+from boto3.dynamodb.conditions import Key
 
 
 logger = logging.getLogger(__name__)
@@ -95,7 +95,7 @@ def get_encounters_for_shelter(
     """
     from boto3.dynamodb.conditions import ConditionBase
     table = _table()
-    key_expr: ConditionBase = Key("shelter").eq(shelter)
+    key_expr: "ConditionBase" = Key("shelter").eq(shelter)  # type: ignore[assignment]
     if from_date and to_date:
         key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
     elif from_date:
