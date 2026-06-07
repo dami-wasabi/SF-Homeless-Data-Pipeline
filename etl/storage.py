@@ -32,7 +32,7 @@ import os
 from typing import Optional
 
 import boto3
-from boto3.dynamodb.conditions import Key, ConditionBase
+from boto3.dynamodb.conditions import Key, ConditionBase  # noqa: F401
 
 
 logger = logging.getLogger(__name__)
