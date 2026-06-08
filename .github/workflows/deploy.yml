@@ -127,7 +127,11 @@ jobs:
 
 
       - name: CDK bootstrap
-        run: cd infra && npx cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }} --trust ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          cd infra && npx cdk bootstrap \
+          aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }} \
+          --trust ${{ secrets.AWS_ROLE_ARN }} \
+          --cloudformation-execution-policies arn:aws:iam::aws:policy/AdministratorAccess
 
       - name: CDK diff (preview changes)
         run: cd infra && npx cdk diff
