@@ -2,6 +2,8 @@
 
 A production-grade serverless data pipeline built on AWS for a government-funded nonprofit addressing homelessness in San Francisco. The system ingests two mismatched government datasets, normalises their incompatible identifier formats, merges them into a unified dataset, and serves the results through a REST API to a live React dashboard.
 
+
+![CI](https://github.com/dami-wasabi/SF-Homeless-Data-Pipeline/actions/workflows/deploy.yml/badge.svg)
 🔗 **Live dashboard:** https://d1cuma1h0iq1zi.cloudfront.net
 ![SF Homeless Pilot Dashboard](docs/dashboard-screenshot.png)
 > CI/CD pipeline: GitHub Actions → pytest + ruff + mypy → CDK deploy → CloudFront
