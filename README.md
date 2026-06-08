@@ -4,6 +4,7 @@ A production-grade serverless data pipeline built on AWS for a government-funded
 
 🔗 **Live dashboard:** https://d1cuma1h0iq1zi.cloudfront.net
 ![SF Homeless Pilot Dashboard](docs/dashboard-screenshot.png)
+> CI/CD pipeline: GitHub Actions → pytest + ruff + mypy → CDK deploy → CloudFront
 ---
 
 ## The problem
