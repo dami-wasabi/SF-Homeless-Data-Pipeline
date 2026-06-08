@@ -124,6 +124,11 @@ jobs:
       - name: Install CDK dependencies
         run: cd infra && npm ci
 
+
+
+      - name: CDK bootstrap
+        run: cd infra && npx cdk bootstrap aws://${{ secrets.AWS_ACCOUNT_ID }}/${{ secrets.AWS_REGION }} --trust ${{ secrets.AWS_ROLE_ARN }}
+
       - name: CDK diff (preview changes)
         run: cd infra && npx cdk diff
         env:
