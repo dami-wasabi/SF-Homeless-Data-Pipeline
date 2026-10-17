@@ -2,11 +2,15 @@
 
 A production-grade serverless data pipeline built on AWS for a government-funded nonprofit addressing homelessness in San Francisco. The system ingests two mismatched government datasets, normalises their incompatible identifier formats, merges them into a unified dataset, and serves the results through a REST API to a live React dashboard.
 
+[![CI](https://github.com/dami-wasabi/SF-Homeless-Data-Pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/dami-wasabi/SF-Homeless-Data-Pipeline/actions/workflows/ci.yml)
 
-![CI](https://github.com/dami-wasabi/SF-Homeless-Data-Pipeline/actions/workflows/deploy.yml/badge.svg)
 🔗 **Live dashboard:** https://d1cuma1h0iq1zi.cloudfront.net
+
 ![SF Homeless Pilot Dashboard](docs/dashboard-screenshot.png)
-> CI/CD pipeline: GitHub Actions → pytest + ruff + mypy → CDK deploy → CloudFront
+
+> **CI** on every push: ruff · mypy · pytest · `tsc` · `cdk synth` · ESLint · Vite build.
+> **Deploy** is a manually triggered GitHub Actions workflow (OIDC → CDK deploy → S3 → CloudFront).
+
 ---
 
 ## The problem
@@ -35,7 +39,7 @@ S3 (raw CSVs)
     │
     ├── S3 PUT event ──────────────────────────────┐
     │                                              │
-    └── EventBridge Scheduler (02:00 UTC cron) ─── Lambda ETL
+    └── EventBridge rule (02:00 UTC cron) ──────── Lambda ETL
                                                    │  normalize HID
                                                    │  join datasets
                                                    │  validate output
@@ -59,25 +63,30 @@ S3 (raw CSVs)
 No AWS credentials required. Tests complete in under 1 second.
 
 ```bash
-git clone https://github.com/dami-wasabi/e84-pilot.git
-cd e84-pilot
-python -m unittest tests/test_pipeline.py -v
+git clone https://github.com/dami-wasabi/SF-Homeless-Data-Pipeline.git
+cd SF-Homeless-Data-Pipeline
+pip install -r requirements.txt
+python -m pytest tests/ -v
 ```
 
-**29 tests covering:**
+**31 tests covering:**
 - HID normalisation — 8 cases (single/double/triple digit, case-insensitive, whitespace, invalid format)
 - Demographics CSV parsing — 5 cases
 - Anxiety CSV parsing — 4 cases
 - Merge / join logic — 6 cases
 - Record serialisation — 2 cases
 - Full integration against the real CSV files — 4 cases
+- DynamoDB scan pagination and result limits (mocked table) — 2 cases
 
 ---
 
 ## Project structure
 
 ```
-e84_pilot/
+SF-Homeless-Data-Pipeline/
+├── .github/workflows/
+│   ├── ci.yml            # lint, type-check, test, synth, build on every push
+│   └── deploy.yml        # manual OIDC deploy: CDK → S3 → CloudFront
 ├── etl/
 │   ├── transform.py      # HID normalisation, CSV parsing, join logic
 │   ├── s3_sync.py        # S3 download + change-detection via SSM
@@ -87,7 +96,7 @@ e84_pilot/
 │   ├── api_handler.py    # API Gateway Lambda — REST endpoints
 │   └── local_dev.py      # FastAPI dev server for local development
 ├── tests/
-│   └── test_pipeline.py  # 29 unit + integration tests
+│   └── test_pipeline.py  # 31 unit + integration tests
 ├── infra/
 │   ├── bin/app.ts         # CDK app entrypoint
 │   └── lib/e84-pilot-stack.ts  # All AWS resources as code
@@ -197,28 +206,27 @@ aws cloudfront create-invalidation --distribution-id YOUR_DIST_ID --paths "/*"
 
 ## CI/CD pipeline
 
-GitHub Actions runs three jobs on every push to `main`:
+**CI — [`ci.yml`](.github/workflows/ci.yml)** runs on every push and pull request, with no AWS credentials:
 
-| Job | Trigger | What it does |
-|---|---|---|
-| **Lint & Test** | Every push + PR | pytest · ruff · mypy · tsc · ESLint |
-| **Deploy Infra** | main branch only | cdk diff → cdk deploy |
-| **Deploy Frontend** | After infra job | Vite build → S3 sync → CloudFront invalidation |
+| Job | Checks |
+|---|---|
+| **Python** | `ruff` lint · `mypy` type-check · `pytest` (results uploaded as an artifact) |
+| **Infra** | `tsc --noEmit` · `cdk synth`, which renders the full CloudFormation template offline |
+| **Dashboard** | ESLint (zero warnings allowed) · production Vite build |
 
-**Authentication uses GitHub OIDC** — no static IAM access keys are stored in GitHub Secrets. Tokens are short-lived and scoped to each workflow run.
+**Deploy — [`deploy.yml`](.github/workflows/deploy.yml)** is triggered manually from the Actions tab rather than on every merge, so infrastructure changes are applied deliberately. It authenticates with **GitHub OIDC** (short-lived credentials, no stored AWS keys), runs `cdk diff` then `cdk deploy`, builds the dashboard, syncs it to S3 with long-lived caching for hashed assets, and invalidates `index.html` in CloudFront.
 
-### Required GitHub Secrets
+CDK bootstrap and the OIDC role are one-time setup steps done outside CI, so the pipeline never needs admin-level permissions. Secrets required by the deploy workflow:
 
 | Secret | Value |
 |---|---|
-| `AWS_ROLE_ARN` | ARN of IAM role with OIDC trust for GitHub |
+| `AWS_ROLE_ARN` | IAM role with an OIDC trust policy for this repository |
 | `AWS_REGION` | e.g. `us-east-1` |
-| `ALERT_EMAIL` | Email address for CloudWatch alarm notifications |
-| `PARTNER_BUCKET` | Partner public S3 bucket name |
-| `PARTNER_KEY` | Partner CSV S3 key |
-| `REACT_APP_API_URL` | API Gateway invoke URL |
+| `ALERT_EMAIL` | Email subscribed to the CloudWatch alarm topic |
+| `PARTNER_BUCKET` / `PARTNER_KEY` | Partner S3 bucket and CSV key |
+| `VITE_API_URL` | API Gateway URL (CDK output `ApiEndpoint`) |
+| `FRONTEND_BUCKET` | Dashboard bucket (CDK output `FrontendBucketName`) |
 | `CLOUDFRONT_DIST_ID` | CloudFront distribution ID |
-| `FRONTEND_BUCKET` | Frontend S3 bucket name |
 
 ---
 
@@ -231,7 +239,7 @@ GitHub Actions runs three jobs on every push to `main`:
 | API Gateway HTTP API | < $0.01 |
 | S3 (data + frontend) | < $0.01 |
 | CloudFront | < $0.10 |
-| EventBridge Scheduler | < $0.01 |
+| EventBridge rule | < $0.01 |
 | SSM Parameter Store | $0.00 |
 | CloudWatch + SNS | < $0.50 |
 | **Total** | **< $1.00 / month** |
@@ -242,7 +250,7 @@ Scales to approximately $50/month at 1,000 active users per day.
 
 ## Partner S3 sync
 
-The system checks a partner public S3 bucket nightly at 02:00 UTC via EventBridge Scheduler. The ETL Lambda calls `s3.head_object()` on the known file key and compares the `LastModified` timestamp against the last successful run time stored in SSM Parameter Store.
+The system checks a partner public S3 bucket nightly at 02:00 UTC via a scheduled EventBridge rule. The ETL Lambda calls `s3.head_object()` on the known file key and compares the `LastModified` timestamp against the last successful run time stored in SSM Parameter Store.
 
 - **If unchanged:** Lambda exits immediately. Cost ≈ $0.000006 per night.
 - **If changed:** Full ETL pipeline runs, DynamoDB is updated, SSM timestamp is refreshed.
@@ -257,7 +265,8 @@ The system checks a partner public S3 bucket nightly at 02:00 UTC via EventBridg
 - API error alarm — ≥5 errors in 5 minutes → SNS → email
 - X-Ray active tracing on both Lambdas
 - CloudWatch operational dashboard
-- Custom match rate metric — alarms if merged/encounters ratio drops below 95%
+
+**Next step:** publish the HID match rate as a custom CloudWatch metric and alarm if it drops below 95%. A silent drop in matches is the most likely way this pipeline would fail quietly if an upstream system changes its ID format.
 
 ---
 
@@ -286,11 +295,11 @@ Open `http://localhost:3000`. The local server reads directly from the CSV files
 
 **Backend:** Python 3.12 · boto3 · AWS Lambda · DynamoDB · API Gateway HTTP API v2
 
-**Infrastructure:** AWS CDK (TypeScript) · S3 · CloudFront · EventBridge Scheduler · SSM Parameter Store · CloudWatch · SNS
+**Infrastructure:** AWS CDK (TypeScript) · S3 · CloudFront · EventBridge · SSM Parameter Store · CloudWatch · SNS
 
 **Frontend:** React 18 · Vite · Recharts
 
-**CI/CD:** GitHub Actions · OIDC authentication · pytest · ruff · mypy · ESLint
+**CI/CD:** GitHub Actions · OIDC authentication · pytest · ruff · mypy · ESLint · cdk synth
 
 ---
 

@@ -32,7 +32,7 @@ import os
 from typing import Optional
 
 import boto3
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import ConditionBase, Key
 
 
 logger = logging.getLogger(__name__)
@@ -93,83 +93,15 @@ def get_encounters_for_shelter(
     All encounters at a shelter, optionally bounded by ISO date strings.
     Uses the shelter-date-index GSI.
     """
-    from boto3.dynamodb.conditions import ConditionBase
-    table = _table()
-    key_expr: "ConditionBase" = Key("shelter").eq(shelter)  # type: ignore[assignment]
-    if from_date and to_date:
-        key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
-    elif from_date:
-        key_expr = key_expr & Key("encounter_date").gte(from_date)
-
-    response = table.query(
-        IndexName="shelter-date-index",
-        KeyConditionExpression=key_expr,
-    )
-    return response.get("Items", [])
-    """
-    All encounters at a shelter, optionally bounded by ISO date strings.
-    Uses the shelter-date-index GSI.
-    """
-    
-    table = _table()
     key_expr: ConditionBase = Key("shelter").eq(shelter)
     if from_date and to_date:
         key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
     elif from_date:
         key_expr = key_expr & Key("encounter_date").gte(from_date)
+    elif to_date:
+        key_expr = key_expr & Key("encounter_date").lte(to_date)
 
-    response = table.query(
-        IndexName="shelter-date-index",
-        KeyConditionExpression=key_expr,
-    )
-    return response.get("Items", [])
-    """
-    All encounters at a shelter, optionally bounded by ISO date strings.
-    Uses the shelter-date-index GSI.
-    """
-    
-    table = _table()
-    key_expr: ConditionBase = Key("shelter").eq(shelter)
-    if from_date and to_date:
-        key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
-    elif from_date:
-        key_expr = key_expr & Key("encounter_date").gte(from_date)
-
-    response = table.query(
-        IndexName="shelter-date-index",
-        KeyConditionExpression=key_expr,
-    )
-    return response.get("Items", [])
-    """
-    All encounters at a shelter, optionally bounded by ISO date strings.
-    Uses the shelter-date-index GSI.
-    """
-    
-    table = _table()
-    key_expr: ConditionBase = Key("shelter").eq(shelter)
-    if from_date and to_date:
-        key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
-    elif from_date:
-        key_expr = key_expr & Key("encounter_date").gte(from_date)
-
-    response = table.query(
-        IndexName="shelter-date-index",
-        KeyConditionExpression=key_expr,
-    )
-    return response.get("Items", [])
-    """
-    All encounters at a shelter, optionally bounded by ISO date strings.
-    Uses the shelter-date-index GSI.
-    """
-    table = _table()
-    
-    key_expr: ConditionBase = Key("shelter").eq(shelter)
-    if from_date and to_date:
-        key_expr = key_expr & Key("encounter_date").between(from_date, to_date)
-    elif from_date:
-        key_expr = key_expr & Key("encounter_date").gte(from_date)
-
-    response = table.query(
+    response = _table().query(
         IndexName="shelter-date-index",
         KeyConditionExpression=key_expr,
     )
@@ -192,9 +124,13 @@ def scan_all(limit: Optional[int] = None) -> list[dict]:
         response = table.scan(**kwargs)
         items.extend(response.get("Items", []))
         last_key = response.get("LastEvaluatedKey")
-        if not last_key:
+        # DynamoDB's Limit applies per page, so stop paginating once we have enough.
+        if not last_key or (limit and len(items) >= limit):
             break
         kwargs["ExclusiveStartKey"] = last_key
+
+    if limit:
+        items = items[:limit]
 
     logger.info("Scanned %d total records from %s", len(items), TABLE_NAME)
     return items

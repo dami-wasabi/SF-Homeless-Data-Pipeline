@@ -14,9 +14,4 @@ export default defineConfig({
       "/shelters":   "http://localhost:3001",
     },
   },
-  define: {
-    // Expose the API URL to the built app
-    // Works with both VITE_ prefix (recommended) and REACT_APP_ (legacy CRA)
-    __API_URL__: JSON.stringify(process.env.VITE_API_URL || process.env.REACT_APP_API_URL || ""),
-  },
 });

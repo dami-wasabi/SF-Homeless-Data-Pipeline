@@ -13,6 +13,7 @@ import io
 import sys
 import os
 import unittest
+from unittest import mock
 from datetime import date
 
 
@@ -261,6 +262,48 @@ class TestRunPipelineIntegration(unittest.TestCase):
             if rec.anxiety_level is not None:
                 self.assertGreaterEqual(rec.anxiety_level, 0)
                 self.assertLessEqual(rec.anxiety_level, 10)
+
+
+# ---------------------------------------------------------------------------
+# Storage layer – DynamoDB calls are mocked, no AWS needed
+# ---------------------------------------------------------------------------
+
+class _FakePagedTable:
+    """Mimics DynamoDB scan pagination: returns `pages` one at a time."""
+
+    def __init__(self, pages):
+        self.pages = pages
+        self.calls = 0
+
+    def scan(self, **kwargs):
+        page = self.pages[self.calls]
+        self.calls += 1
+        response = {"Items": page}
+        if self.calls < len(self.pages):
+            response["LastEvaluatedKey"] = {"hid": f"page-{self.calls}"}
+        return response
+
+
+class TestScanAll(unittest.TestCase):
+
+    def _pages(self):
+        return [[{"hid": f"{p}-{i}"} for i in range(3)] for p in range(4)]  # 12 items
+
+    def test_limit_caps_results_and_stops_paginating(self):
+        from etl import storage
+        table = _FakePagedTable(self._pages())
+        with mock.patch.object(storage, "_table", return_value=table):
+            items = storage.scan_all(limit=5)
+        self.assertEqual(len(items), 5)
+        self.assertEqual(table.calls, 2, "should stop reading pages once the limit is reached")
+
+    def test_no_limit_reads_every_page(self):
+        from etl import storage
+        table = _FakePagedTable(self._pages())
+        with mock.patch.object(storage, "_table", return_value=table):
+            items = storage.scan_all()
+        self.assertEqual(len(items), 12)
+        self.assertEqual(table.calls, 4)
 
 
 if __name__ == "__main__":

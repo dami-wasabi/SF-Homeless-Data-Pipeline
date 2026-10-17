@@ -8,7 +8,7 @@
 //   • Average anxiety by shelter (bar chart)
 //   • Full encounter table with search + sort
 //
-// Data source: API Gateway endpoint set via REACT_APP_API_URL env variable.
+// Data source: API Gateway endpoint set via VITE_API_URL (read at build time by Vite).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback } from "react";
@@ -170,7 +170,7 @@ export default function App() {
 
         {error && (
           <div style={{ background: "#fff0ee", border: "1px solid #f09595", borderRadius: 8, padding: "12px 16px", marginBottom: 24, color: "#a32d2d", fontSize: 13 }}>
-            ⚠ {error} — check that <code>REACT_APP_API_URL</code> is set correctly.
+            ⚠ {error} — check that <code>VITE_API_URL</code> is set correctly.
           </div>
         )}
 

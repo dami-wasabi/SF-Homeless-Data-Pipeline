@@ -68,8 +68,8 @@ import * as logs from "aws-cdk-lib/aws-logs";
 import * as path from "path";
 
 export interface E84PilotStackProps extends cdk.StackProps {
-  /** Email address that receives CloudWatch alarm notifications. */
-  alertEmail: string;
+  /** Email address that receives CloudWatch alarm notifications. Omit to create the topic with no subscriber. */
+  alertEmail?: string;
   /** Name of the partner's public S3 bucket to poll for updates. */
   partnerBucket: string;
   /** S3 key of the partner dataset CSV inside partnerBucket. */
@@ -251,9 +251,11 @@ export class E84PilotStack extends cdk.Stack {
       topicName:   "e84-pilot-alerts",
       displayName: "E84 Pilot Alerts",
     });
-    alertsTopic.addSubscription(
-      new subscriptions.EmailSubscription(props.alertEmail)
-    );
+    if (props.alertEmail) {
+      alertsTopic.addSubscription(
+        new subscriptions.EmailSubscription(props.alertEmail)
+      );
+    }
 
     // ─── 11. CloudWatch alarms ───────────────────────────────────────────────
     // ETL errors
