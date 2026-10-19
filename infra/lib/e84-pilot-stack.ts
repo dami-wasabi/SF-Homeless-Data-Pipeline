@@ -1,6 +1,6 @@
 // infra/lib/e84-pilot-stack.ts
 // ─────────────────────────────────────────────────────────────────────────────
-// AWS CDK stack for the E84 SF Homeless Pilot – Architecture A (Serverless).
+// AWS CDK stack for the SF Homeless Data Pipeline – serverless architecture.
 //
 // Resources created
 // ─────────────────
@@ -233,7 +233,7 @@ export class E84PilotStack extends cdk.Stack {
     });
 
     const distribution = new cloudfront.Distribution(this, "FrontendDistribution", {
-      comment:       "E84 Pilot – React Dashboard",
+      comment:       "SF Homeless Data Pipeline – React dashboard",
       defaultBehavior: {
         origin:               new origins.S3Origin(frontendBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -249,7 +249,7 @@ export class E84PilotStack extends cdk.Stack {
     // ─── 10. SNS alerts topic ────────────────────────────────────────────────
     const alertsTopic = new sns.Topic(this, "AlertsTopic", {
       topicName:   "e84-pilot-alerts",
-      displayName: "E84 Pilot Alerts",
+      displayName: "SF Homeless Pipeline Alerts",
     });
     if (props.alertEmail) {
       alertsTopic.addSubscription(

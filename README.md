@@ -1,6 +1,8 @@
 # SF Homeless Data Pipeline — Serverless Data Pipeline & Dashboard
 
-A production-grade serverless data pipeline built on AWS for a government-funded nonprofit addressing homelessness in San Francisco. The system ingests two mismatched government datasets, normalises their incompatible identifier formats, merges them into a unified dataset, and serves the results through a REST API to a live React dashboard.
+A serverless data pipeline on AWS that reconciles two San Francisco homelessness-services datasets: one with client demographics, one with shelter-visit anxiety assessments. They describe the same people but with incompatible ID formats, so they can't be joined as-is. The pipeline normalises the identifiers, merges the records into a single dataset, stores it in DynamoDB and serves it through a REST API to a live React dashboard that shows how anxiety levels vary by shelter and over time.
+
+Everything is defined as code (AWS CDK), tested without an AWS account, and runs for under $1/month at current volume.
 
 [![CI](https://github.com/dami-wasabi/SF-Homeless-Data-Pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/dami-wasabi/SF-Homeless-Data-Pipeline/actions/workflows/ci.yml)
 

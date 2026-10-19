@@ -152,7 +152,7 @@ export default function App() {
       {/* Header */}
       <div style={{ background: "#1a1a1a", padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p style={{ margin: 0, fontSize: 11, color: "#888", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase" }}>Element 84 · SF Homeless Pilot</p>
+          <p style={{ margin: 0, fontSize: 11, color: "#888", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase" }}>SF Homeless Data Pipeline</p>
           <h1 style={{ margin: "4px 0 0", fontSize: 22, color: "#fff", fontWeight: 400, fontFamily: "'Georgia', serif" }}>Shelter Anxiety Dashboard</h1>
         </div>
         <button
