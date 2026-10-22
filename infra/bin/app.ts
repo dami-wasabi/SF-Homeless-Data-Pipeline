@@ -3,7 +3,7 @@
 // CDK app entrypoint – instantiates the pilot stack.
 //
 // Override defaults via environment variables:
-//   ALERT_EMAIL     email to receive CloudWatch alarms   (required in prod)
+//   ALERT_EMAIL     email to receive CloudWatch alarms   (no subscriber if unset)
 //   PARTNER_BUCKET  name of the partner public S3 bucket
 //   PARTNER_KEY     S3 key of the partner CSV file
 
@@ -14,7 +14,7 @@ import { E84PilotStack } from "../lib/e84-pilot-stack";
 const app = new cdk.App();
 
 new E84PilotStack(app, "E84PilotStack", {
-  alertEmail:    process.env.ALERT_EMAIL    ?? "devops@element84.com",
+  alertEmail:    process.env.ALERT_EMAIL,
   partnerBucket: process.env.PARTNER_BUCKET ?? "sf-open-data-public",
   partnerKey:    process.env.PARTNER_KEY    ?? "homeless/partner_dataset.csv",
   env: {

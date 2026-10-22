@@ -1,5 +1,5 @@
 {
-  "name": "e84-pilot-dashboard",
+  "name": "sf-homeless-dashboard",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -16,7 +16,7 @@
   "scripts": {
     "start": "vite",
     "build": "vite build",
-    "lint":  "eslint src/",
+    "lint":  "eslint --ext .js,.jsx --max-warnings 0 src/",
     "preview": "vite preview"
   }
 }

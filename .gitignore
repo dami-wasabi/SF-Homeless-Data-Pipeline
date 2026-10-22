@@ -34,3 +34,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Build artifacts (Lambda bundles are produced by CDK at deploy time)
+*.zip
+cdk.out/

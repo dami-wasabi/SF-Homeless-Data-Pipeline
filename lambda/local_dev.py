@@ -83,7 +83,7 @@ import importlib
 _api_mod = importlib.import_module("lambda.api_handler")
 api_handler = _api_mod.handler   # noqa: E402  (after monkey-patch)
 
-app = FastAPI(title="E84 Pilot – Local Dev API")
+app = FastAPI(title="SF Homeless Data Pipeline – Local Dev API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 

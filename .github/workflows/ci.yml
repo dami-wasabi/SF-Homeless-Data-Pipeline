@@ -1,0 +1,81 @@
+# Continuous integration: runs on every push and pull request.
+# No AWS credentials are needed - DynamoDB/S3 calls are mocked in tests and
+# `cdk synth` renders the CloudFormation template offline.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "22"
+
+jobs:
+  python:
+    name: Python - lint, type-check, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: ruff
+        run: ruff check etl/ lambda/ tests/
+      - name: mypy
+        run: mypy etl/ lambda/ --ignore-missing-imports
+      - name: pytest
+        run: python -m pytest tests/ -v --tb=short --junitxml=test-results/pytest.xml
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: pytest-results
+          path: test-results/
+
+  infra:
+    name: CDK - type-check and synth
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+      - run: npm ci
+        working-directory: infra
+      - run: npx tsc --noEmit
+        working-directory: infra
+      - name: cdk synth
+        run: npx cdk synth --quiet
+        working-directory: infra
+
+  dashboard:
+    name: Dashboard - lint and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci
+        working-directory: dashboard
+      - run: npm run lint
+        working-directory: dashboard
+      - run: npm run build
+        working-directory: dashboard
+        env:
+          VITE_API_URL: https://api.example.invalid

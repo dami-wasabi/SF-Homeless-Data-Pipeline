@@ -1,6 +1,6 @@
 // infra/lib/e84-pilot-stack.ts
 // ─────────────────────────────────────────────────────────────────────────────
-// AWS CDK stack for the E84 SF Homeless Pilot – Architecture A (Serverless).
+// AWS CDK stack for the SF Homeless Data Pipeline – serverless architecture.
 //
 // Resources created
 // ─────────────────
@@ -68,8 +68,8 @@ import * as logs from "aws-cdk-lib/aws-logs";
 import * as path from "path";
 
 export interface E84PilotStackProps extends cdk.StackProps {
-  /** Email address that receives CloudWatch alarm notifications. */
-  alertEmail: string;
+  /** Email address that receives CloudWatch alarm notifications. Omit to create the topic with no subscriber. */
+  alertEmail?: string;
   /** Name of the partner's public S3 bucket to poll for updates. */
   partnerBucket: string;
   /** S3 key of the partner dataset CSV inside partnerBucket. */
@@ -233,7 +233,7 @@ export class E84PilotStack extends cdk.Stack {
     });
 
     const distribution = new cloudfront.Distribution(this, "FrontendDistribution", {
-      comment:       "E84 Pilot – React Dashboard",
+      comment:       "SF Homeless Data Pipeline – React dashboard",
       defaultBehavior: {
         origin:               new origins.S3Origin(frontendBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -249,11 +249,13 @@ export class E84PilotStack extends cdk.Stack {
     // ─── 10. SNS alerts topic ────────────────────────────────────────────────
     const alertsTopic = new sns.Topic(this, "AlertsTopic", {
       topicName:   "e84-pilot-alerts",
-      displayName: "E84 Pilot Alerts",
+      displayName: "SF Homeless Pipeline Alerts",
     });
-    alertsTopic.addSubscription(
-      new subscriptions.EmailSubscription(props.alertEmail)
-    );
+    if (props.alertEmail) {
+      alertsTopic.addSubscription(
+        new subscriptions.EmailSubscription(props.alertEmail)
+      );
+    }
 
     // ─── 11. CloudWatch alarms ───────────────────────────────────────────────
     // ETL errors

@@ -8,7 +8,7 @@
 //   • Average anxiety by shelter (bar chart)
 //   • Full encounter table with search + sort
 //
-// Data source: API Gateway endpoint set via REACT_APP_API_URL env variable.
+// Data source: API Gateway endpoint set via VITE_API_URL (read at build time by Vite).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useCallback } from "react";
@@ -152,7 +152,7 @@ export default function App() {
       {/* Header */}
       <div style={{ background: "#1a1a1a", padding: "20px 40px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <p style={{ margin: 0, fontSize: 11, color: "#888", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase" }}>Element 84 · SF Homeless Pilot</p>
+          <p style={{ margin: 0, fontSize: 11, color: "#888", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase" }}>SF Homeless Data Pipeline</p>
           <h1 style={{ margin: "4px 0 0", fontSize: 22, color: "#fff", fontWeight: 400, fontFamily: "'Georgia', serif" }}>Shelter Anxiety Dashboard</h1>
         </div>
         <button
@@ -170,7 +170,7 @@ export default function App() {
 
         {error && (
           <div style={{ background: "#fff0ee", border: "1px solid #f09595", borderRadius: 8, padding: "12px 16px", marginBottom: 24, color: "#a32d2d", fontSize: 13 }}>
-            ⚠ {error} — check that <code>REACT_APP_API_URL</code> is set correctly.
+            ⚠ {error} — check that <code>VITE_API_URL</code> is set correctly.
           </div>
         )}
 
